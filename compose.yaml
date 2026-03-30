@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: recon-control-postgres
+    environment:
+      POSTGRES_DB: recon_control
+      POSTGRES_USER: recon_app
+      POSTGRES_PASSWORD: recon_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recon_app -d recon_control"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: recon-control-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
