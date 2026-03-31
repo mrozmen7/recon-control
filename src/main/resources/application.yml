@@ -61,6 +61,8 @@ app:
       high-amount-threshold: 1000.00
       burst-threshold: 3
       burst-window-minutes: 10
+  observability:
+    correlation-header: X-Correlation-Id
 
 resilience4j:
   retry:
@@ -78,6 +80,31 @@ resilience4j:
 
 server:
   port: 8080
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+    prometheus:
+      access: unrestricted
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  info:
+    env:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: Banking-grade reconciliation and settlement control system
+    phase: faz-4-production-readiness
 
 logging:
   level:

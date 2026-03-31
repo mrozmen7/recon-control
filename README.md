@@ -1,49 +1,78 @@
 # recon-control
 
-`recon-control`, bankacilik odakli bir reconciliation ve settlement
-control system projesidir.
+`recon-control` is a banking-grade reconciliation and settlement control
+system built to learn and demonstrate real backend engineering patterns
+used in financial systems.
 
-Bu proje su gercek problemleri cozmeyi hedefler:
+## What Problem It Solves
+The project targets real banking problems such as:
 
-- ayni islemin farkli sistemlerde farkli gorunmesi
-- eksik veya duplicate transaction kaydi
-- settlement gecikmesi veya takilmasi
-- mismatch tespit edilmesine ragmen operasyonel aksiyon uretilememesi
-- audit ve incident incelemesinde aciklanamayan kararlar
+- duplicate or inconsistent transaction records across systems
+- settlement lifecycle tracking gaps
+- missing fraud-event propagation
+- weak request traceability during incidents
+- poor observability in production-like environments
 
-Ilk asamada proje `Modular Monolith + Hexagonal Architecture`
-yaklasimiyla kurulacaktir.
-
-Hedef teknoloji omurgasi:
-
+## Technology Stack
 - Java 21
-- Spring Boot 3
+- Spring Boot 3.5
 - PostgreSQL
 - Redis
+- Kafka
 - Flyway
-- Spring Security
+- Spring Security + JWT
+- Spring Boot Actuator + Prometheus
+- Docker / Docker Compose
+- GitHub Actions
 - Testcontainers
 
-Ilerleyen fazlarda:
-
-- Kafka
+## Architecture
+- Modular Monolith
+- Hexagonal Architecture
 - Outbox Pattern
-- Settlement state machine
-- Case management
-- Observability
-- AWS deployment
+- Event-driven fraud evaluation
+- Optimistic locking and idempotency
 
-## Faz 1 Hedefi
+## Current Phase Coverage
+### Faz 1
+- core account and transaction foundation
+- REST API, persistence, migrations
 
-Faz 1'de amac:
+### Faz 2
+- security, JWT, idempotency, rate limiting, transaction safety
 
-- repo temelini kurmak
-- Spring Boot temelini temizlemek
-- `Account`, `InternalTransaction`, `ExternalTransactionRecord`
-  domainlerini planlamak
-- ilk spec ve mimari kararlarini netlestirmek
+### Faz 3
+- Kafka, outbox, consumer flow, fraud detection, settlement events
 
-## Not
+### Faz 4
+- containerization
+- CI pipeline
+- metrics and health endpoints
+- structured logging and correlation id
+- production-like runtime documentation
 
-Bu proje sadece kod yazma egzersizi degil, ayni zamanda bankacilik
-backend dusuncesini ogrenme projesidir.
+## Local Run
+### Development profile
+```bash
+./mvnw spring-boot:run
+```
+
+### Production-like local stack
+```bash
+docker compose up -d --build
+```
+
+Useful URLs:
+- Swagger: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- Health: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+- Prometheus metrics: [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
+- Prometheus UI: [http://localhost:9090](http://localhost:9090)
+
+## Docs
+- [ADR-004 Production Readiness](docs/adr/ADR-004-production-readiness.md)
+- [Faz 4 Production Readiness Overview](docs/architecture/faz-4-production-readiness.md)
+
+## Why This Matters For Banking Interviews
+This project is intentionally not just CRUD. It demonstrates how a
+backend service evolves from a simple transactional core into a
+security-aware, event-driven, and observable production-style system.
