@@ -1,12 +1,17 @@
 package com.yavuzozmen.reconcontrol.common.adapter.in.web;
 
 import com.yavuzozmen.reconcontrol.account.application.AccountNotFoundException;
+import com.yavuzozmen.reconcontrol.infra.ratelimit.RateLimitExceededException;
+import com.yavuzozmen.reconcontrol.infra.security.InvalidCredentialsException;
+import com.yavuzozmen.reconcontrol.transaction.application.IdempotencyRequestInProgressException;
+import com.yavuzozmen.reconcontrol.transaction.application.TransactionNotFoundException;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -27,6 +32,76 @@ public class GlobalApiExceptionHandler {
             HttpStatus.NOT_FOUND,
             "ACCOUNT_NOT_FOUND",
             exception.getMessage(),
+            request,
+            List.of()
+        );
+    }
+
+    @ExceptionHandler(TransactionNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleTransactionNotFound(
+        TransactionNotFoundException exception,
+        HttpServletRequest request
+    ) {
+        return buildResponse(
+            HttpStatus.NOT_FOUND,
+            "TRANSACTION_NOT_FOUND",
+            exception.getMessage(),
+            request,
+            List.of()
+        );
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(
+        InvalidCredentialsException exception,
+        HttpServletRequest request
+    ) {
+        return buildResponse(
+            HttpStatus.UNAUTHORIZED,
+            "INVALID_CREDENTIALS",
+            exception.getMessage(),
+            request,
+            List.of()
+        );
+    }
+
+    @ExceptionHandler(IdempotencyRequestInProgressException.class)
+    public ResponseEntity<ApiErrorResponse> handleIdempotencyInProgress(
+        IdempotencyRequestInProgressException exception,
+        HttpServletRequest request
+    ) {
+        return buildResponse(
+            HttpStatus.CONFLICT,
+            "IDEMPOTENCY_IN_PROGRESS",
+            exception.getMessage(),
+            request,
+            List.of()
+        );
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimitExceeded(
+        RateLimitExceededException exception,
+        HttpServletRequest request
+    ) {
+        return buildResponse(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "RATE_LIMIT_EXCEEDED",
+            exception.getMessage(),
+            request,
+            List.of()
+        );
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiErrorResponse> handleOptimisticLockingFailure(
+        OptimisticLockingFailureException exception,
+        HttpServletRequest request
+    ) {
+        return buildResponse(
+            HttpStatus.CONFLICT,
+            "CONCURRENT_MODIFICATION",
+            "Concurrent modification detected. Please retry the request.",
             request,
             List.of()
         );

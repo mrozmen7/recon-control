@@ -3,6 +3,7 @@ package com.yavuzozmen.reconcontrol.account.adapter.in.web;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -25,6 +26,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AccountController.class)
@@ -44,6 +46,7 @@ class AccountControllerTest {
     void shouldOpenAccount() throws Exception {
         Account account = Account.rehydrate(
             UUID.fromString("11111111-1111-1111-1111-111111111111"),
+            0L,
             "CH1000000001",
             "cust-001",
             CurrencyCode.CHF,
@@ -54,6 +57,7 @@ class AccountControllerTest {
 
         mockMvc.perform(
                 post("/api/v1/accounts")
+                    .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPS_USER")))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {
@@ -80,6 +84,7 @@ class AccountControllerTest {
         UUID accountId = UUID.fromString("22222222-2222-2222-2222-222222222222");
         Account account = Account.rehydrate(
             accountId,
+            0L,
             "CH2000000002",
             "cust-002",
             CurrencyCode.EUR,
@@ -88,7 +93,10 @@ class AccountControllerTest {
         );
         given(getAccountUseCase.handle(eq(accountId))).willReturn(account);
 
-        mockMvc.perform(get("/api/v1/accounts/{accountId}", accountId))
+        mockMvc.perform(
+                get("/api/v1/accounts/{accountId}", accountId)
+                    .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_AUDITOR")))
+            )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(accountId.toString()))
             .andExpect(jsonPath("$.customerId").value("cust-002"))
@@ -100,7 +108,10 @@ class AccountControllerTest {
         UUID missingId = UUID.fromString("33333333-3333-3333-3333-333333333333");
         given(getAccountUseCase.handle(eq(missingId))).willThrow(new AccountNotFoundException(missingId));
 
-        mockMvc.perform(get("/api/v1/accounts/{accountId}", missingId))
+        mockMvc.perform(
+                get("/api/v1/accounts/{accountId}", missingId)
+                    .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_AUDITOR")))
+            )
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.error").value("Not Found"));
     }
@@ -109,6 +120,7 @@ class AccountControllerTest {
     void shouldReturnBadRequestWhenRequestIsInvalid() throws Exception {
         mockMvc.perform(
                 post("/api/v1/accounts")
+                    .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPS_USER")))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {

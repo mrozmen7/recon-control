@@ -19,6 +19,30 @@ spring:
       host: localhost
       port: 6379
 
+app:
+  security:
+    jwt:
+      secret: recon-control-super-secret-key-recon-control-2026
+      issuer: recon-control
+      expiry-minutes: 60
+  rate-limit:
+    transaction-create:
+      limit: 5
+      window-seconds: 60
+  idempotency:
+    transaction-create:
+      ttl-hours: 24
+
+resilience4j:
+  retry:
+    instances:
+      transactionCreation:
+        max-attempts: 3
+        wait-duration: 100ms
+        retry-exceptions:
+          - org.springframework.dao.OptimisticLockingFailureException
+          - org.springframework.orm.ObjectOptimisticLockingFailureException
+
 server:
   port: 8080
 

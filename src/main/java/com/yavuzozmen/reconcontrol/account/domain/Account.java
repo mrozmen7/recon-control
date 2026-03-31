@@ -13,6 +13,7 @@ import java.util.UUID;
 public final class Account {
 
     private final UUID id;
+    private final long version;
     private final String accountNumber;
     private final String customerId;
     private final CurrencyCode currency;
@@ -21,6 +22,7 @@ public final class Account {
 
     private Account(
         UUID id,
+        long version,
         String accountNumber,
         String customerId,
         CurrencyCode currency,
@@ -28,6 +30,10 @@ public final class Account {
         AccountStatus status
     ) {
         this.id = Objects.requireNonNull(id, "id must not be null");
+        if (version < 0) {
+            throw new IllegalArgumentException("version must not be negative");
+        }
+        this.version = version;
         this.accountNumber = validateText(accountNumber, "accountNumber");
         this.customerId = validateText(customerId, "customerId");
         this.currency = Objects.requireNonNull(currency, "currency must not be null");
@@ -42,6 +48,7 @@ public final class Account {
     public static Account open(String accountNumber, String customerId, CurrencyCode currency) {
         return new Account(
             UUID.randomUUID(),
+            0L,
             accountNumber,
             customerId,
             currency,
@@ -52,17 +59,22 @@ public final class Account {
 
     public static Account rehydrate(
         UUID id,
+        long version,
         String accountNumber,
         String customerId,
         CurrencyCode currency,
         Money balance,
         AccountStatus status
     ) {
-        return new Account(id, accountNumber, customerId, currency, balance, status);
+        return new Account(id, version, accountNumber, customerId, currency, balance, status);
     }
 
     public UUID id() {
         return id;
+    }
+
+    public long version() {
+        return version;
     }
 
     public String accountNumber() {

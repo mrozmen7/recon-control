@@ -2,6 +2,7 @@ package com.yavuzozmen.reconcontrol.transaction.adapter.in.web;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -13,7 +14,11 @@ import com.yavuzozmen.reconcontrol.common.domain.CurrencyCode;
 import com.yavuzozmen.reconcontrol.common.domain.Money;
 import com.yavuzozmen.reconcontrol.infra.SecurityConfig;
 import com.yavuzozmen.reconcontrol.transaction.application.CreateInternalTransactionUseCase;
+import com.yavuzozmen.reconcontrol.transaction.application.GetInternalTransactionUseCase;
 import com.yavuzozmen.reconcontrol.transaction.application.ListInternalTransactionsUseCase;
+import com.yavuzozmen.reconcontrol.transaction.application.MarkTransactionSettlementPendingUseCase;
+import com.yavuzozmen.reconcontrol.transaction.application.SettleTransactionUseCase;
+import com.yavuzozmen.reconcontrol.transaction.application.TransactionCreationResult;
 import com.yavuzozmen.reconcontrol.transaction.domain.InternalTransaction;
 import com.yavuzozmen.reconcontrol.transaction.domain.TransactionStatus;
 import com.yavuzozmen.reconcontrol.transaction.domain.TransactionType;
@@ -27,6 +32,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(TransactionController.class)
@@ -42,6 +48,15 @@ class TransactionControllerTest {
     @MockBean
     private ListInternalTransactionsUseCase listInternalTransactionsUseCase;
 
+    @MockBean
+    private GetInternalTransactionUseCase getInternalTransactionUseCase;
+
+    @MockBean
+    private MarkTransactionSettlementPendingUseCase markTransactionSettlementPendingUseCase;
+
+    @MockBean
+    private SettleTransactionUseCase settleTransactionUseCase;
+
     @Test
     void shouldCreateInternalTransaction() throws Exception {
         InternalTransaction transaction = InternalTransaction.rehydrate(
@@ -52,12 +67,14 @@ class TransactionControllerTest {
             new Money(new java.math.BigDecimal("125.5000"), CurrencyCode.CHF),
             LocalDate.parse("2026-03-30"),
             OffsetDateTime.parse("2026-03-30T19:00:00+02:00"),
-            TransactionStatus.RECEIVED
+            TransactionStatus.BOOKED
         );
-        given(createInternalTransactionUseCase.handle(any())).willReturn(transaction);
+        given(createInternalTransactionUseCase.handle(any()))
+            .willReturn(TransactionCreationResult.created(transaction));
 
         mockMvc.perform(
                 post("/api/v1/transactions")
+                    .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPS_USER")))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {
@@ -81,13 +98,15 @@ class TransactionControllerTest {
             .andExpect(jsonPath("$.type").value("DEBIT"))
             .andExpect(jsonPath("$.amount").value(125.5))
             .andExpect(jsonPath("$.currency").value("CHF"))
-            .andExpect(jsonPath("$.status").value("RECEIVED"));
+            .andExpect(jsonPath("$.status").value("BOOKED"))
+            .andExpect(header().string("X-Idempotent-Replay", "false"));
     }
 
     @Test
     void shouldReturnBadRequestWhenTransactionRequestIsInvalid() throws Exception {
         mockMvc.perform(
                 post("/api/v1/transactions")
+                    .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPS_USER")))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {
@@ -120,7 +139,10 @@ class TransactionControllerTest {
         );
         given(listInternalTransactionsUseCase.handle(any())).willReturn(List.of(transaction));
 
-        mockMvc.perform(get("/api/v1/transactions"))
+        mockMvc.perform(
+                get("/api/v1/transactions")
+                    .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_AUDITOR")))
+            )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].referenceNo").value("TRX-0002"))
             .andExpect(jsonPath("$[0].status").value("BOOKED"));

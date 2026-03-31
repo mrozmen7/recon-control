@@ -23,7 +23,13 @@ public class AccountPersistenceAdapter implements AccountRepository {
 
     @Override
     public Account save(Account account) {
-        AccountJpaEntity savedEntity = accountJpaRepository.save(AccountJpaMapper.toJpaEntity(account));
+        AccountJpaEntity entity = accountJpaRepository.existsById(account.id())
+            ? AccountJpaMapper.toJpaEntity(account)
+            : AccountJpaMapper.toNewJpaEntity(account);
+
+        AccountJpaEntity savedEntity = accountJpaRepository.saveAndFlush(
+            entity
+        );
         return AccountJpaMapper.toDomain(savedEntity);
     }
 

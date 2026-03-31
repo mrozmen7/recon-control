@@ -4,6 +4,7 @@ import com.yavuzozmen.reconcontrol.transaction.application.port.out.InternalTran
 import com.yavuzozmen.reconcontrol.transaction.domain.InternalTransaction;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -26,10 +27,16 @@ public class InternalTransactionPersistenceAdapter implements InternalTransactio
     @Override
     public InternalTransaction save(InternalTransaction transaction) {
         return InternalTransactionJpaMapper.toDomain(
-            internalTransactionJpaRepository.save(
+            internalTransactionJpaRepository.saveAndFlush(
                 InternalTransactionJpaMapper.toJpaEntity(transaction)
             )
         );
+    }
+
+    @Override
+    public Optional<InternalTransaction> findById(UUID transactionId) {
+        return internalTransactionJpaRepository.findById(transactionId)
+            .map(InternalTransactionJpaMapper::toDomain);
     }
 
     @Override
