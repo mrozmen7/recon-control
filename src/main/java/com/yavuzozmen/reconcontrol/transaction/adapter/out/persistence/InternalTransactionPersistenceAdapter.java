@@ -2,6 +2,7 @@ package com.yavuzozmen.reconcontrol.transaction.adapter.out.persistence;
 
 import com.yavuzozmen.reconcontrol.transaction.application.port.out.InternalTransactionRepository;
 import com.yavuzozmen.reconcontrol.transaction.domain.InternalTransaction;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,5 +54,13 @@ public class InternalTransactionPersistenceAdapter implements InternalTransactio
             .stream()
             .map(InternalTransactionJpaMapper::toDomain)
             .toList();
+    }
+
+    @Override
+    public long countCreatedAfter(UUID accountId, OffsetDateTime threshold) {
+        return internalTransactionJpaRepository.countByAccountIdAndCreatedAtGreaterThanEqual(
+            accountId,
+            threshold
+        );
     }
 }

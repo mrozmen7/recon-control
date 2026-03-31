@@ -1,6 +1,7 @@
 package com.yavuzozmen.reconcontrol.common.adapter.in.web;
 
 import com.yavuzozmen.reconcontrol.account.application.AccountNotFoundException;
+import com.yavuzozmen.reconcontrol.fraud.application.FraudCaseNotFoundException;
 import com.yavuzozmen.reconcontrol.infra.ratelimit.RateLimitExceededException;
 import com.yavuzozmen.reconcontrol.infra.security.InvalidCredentialsException;
 import com.yavuzozmen.reconcontrol.transaction.application.IdempotencyRequestInProgressException;
@@ -11,6 +12,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -45,6 +47,20 @@ public class GlobalApiExceptionHandler {
         return buildResponse(
             HttpStatus.NOT_FOUND,
             "TRANSACTION_NOT_FOUND",
+            exception.getMessage(),
+            request,
+            List.of()
+        );
+    }
+
+    @ExceptionHandler(FraudCaseNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleFraudCaseNotFound(
+        FraudCaseNotFoundException exception,
+        HttpServletRequest request
+    ) {
+        return buildResponse(
+            HttpStatus.NOT_FOUND,
+            "FRAUD_CASE_NOT_FOUND",
             exception.getMessage(),
             request,
             List.of()
@@ -102,6 +118,34 @@ public class GlobalApiExceptionHandler {
             HttpStatus.CONFLICT,
             "CONCURRENT_MODIFICATION",
             "Concurrent modification detected. Please retry the request.",
+            request,
+            List.of()
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(
+        DataIntegrityViolationException exception,
+        HttpServletRequest request
+    ) {
+        String message = exception.getMostSpecificCause() == null
+            ? "Data integrity violation"
+            : exception.getMostSpecificCause().getMessage();
+
+        if (message != null && message.contains("internal_transactions_reference_no_key")) {
+            return buildResponse(
+                HttpStatus.CONFLICT,
+                "DUPLICATE_TRANSACTION_REFERENCE",
+                "Transaction referenceNo already exists. Reuse the same Idempotency-Key or choose a new referenceNo.",
+                request,
+                List.of()
+            );
+        }
+
+        return buildResponse(
+            HttpStatus.CONFLICT,
+            "DATA_INTEGRITY_VIOLATION",
+            "Request conflicts with an existing database constraint.",
             request,
             List.of()
         );

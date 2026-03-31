@@ -18,6 +18,19 @@ spring:
     redis:
       host: localhost
       port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
 
 app:
   security:
@@ -32,6 +45,22 @@ app:
   idempotency:
     transaction-create:
       ttl-hours: 24
+  kafka:
+    topics:
+      transaction-events: recon-control.transaction-events
+      transaction-events-dlt: recon-control.transaction-events.dlt
+      fraud-alert-events: recon-control.fraud-alert-events
+    consumer:
+      fraud-group-id: recon-control-fraud-evaluator
+  outbox:
+    publisher:
+      delay-ms: 1000
+      batch-size: 20
+  fraud:
+    rules:
+      high-amount-threshold: 1000.00
+      burst-threshold: 3
+      burst-window-minutes: 10
 
 resilience4j:
   retry:
@@ -42,6 +71,10 @@ resilience4j:
         retry-exceptions:
           - org.springframework.dao.OptimisticLockingFailureException
           - org.springframework.orm.ObjectOptimisticLockingFailureException
+  timelimiter:
+    instances:
+      outboxPublishing:
+        timeout-duration: 5s
 
 server:
   port: 8080

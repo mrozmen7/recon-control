@@ -4,8 +4,9 @@ import com.yavuzozmen.reconcontrol.account.application.AccountNotFoundException;
 import com.yavuzozmen.reconcontrol.account.application.port.out.AccountRepository;
 import com.yavuzozmen.reconcontrol.account.domain.Account;
 import com.yavuzozmen.reconcontrol.common.domain.Money;
-import com.yavuzozmen.reconcontrol.transaction.application.port.out.TransactionIdempotencyStore;
 import com.yavuzozmen.reconcontrol.transaction.application.port.out.InternalTransactionRepository;
+import com.yavuzozmen.reconcontrol.transaction.application.port.out.TransactionEventPublisher;
+import com.yavuzozmen.reconcontrol.transaction.application.port.out.TransactionIdempotencyStore;
 import com.yavuzozmen.reconcontrol.transaction.domain.InternalTransaction;
 import com.yavuzozmen.reconcontrol.transaction.domain.TransactionType;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -18,12 +19,29 @@ public class CreateInternalTransactionUseCase {
     private final InternalTransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final TransactionIdempotencyStore idempotencyStore;
+    private final TransactionEventPublisher transactionEventPublisher;
     private final Duration idempotencyTtl;
 
     public CreateInternalTransactionUseCase(
         InternalTransactionRepository transactionRepository,
         AccountRepository accountRepository,
         TransactionIdempotencyStore idempotencyStore,
+        Duration idempotencyTtl
+    ) {
+        this(
+            transactionRepository,
+            accountRepository,
+            idempotencyStore,
+            new NoOpTransactionEventPublisher(),
+            idempotencyTtl
+        );
+    }
+
+    public CreateInternalTransactionUseCase(
+        InternalTransactionRepository transactionRepository,
+        AccountRepository accountRepository,
+        TransactionIdempotencyStore idempotencyStore,
+        TransactionEventPublisher transactionEventPublisher,
         Duration idempotencyTtl
     ) {
         this.transactionRepository = Objects.requireNonNull(
@@ -37,6 +55,10 @@ public class CreateInternalTransactionUseCase {
         this.idempotencyStore = Objects.requireNonNull(
             idempotencyStore,
             "idempotencyStore must not be null"
+        );
+        this.transactionEventPublisher = Objects.requireNonNull(
+            transactionEventPublisher,
+            "transactionEventPublisher must not be null"
         );
         this.idempotencyTtl = Objects.requireNonNull(
             idempotencyTtl,
@@ -136,7 +158,9 @@ public class CreateInternalTransactionUseCase {
         );
         transaction.markBooked();
 
-        return TransactionCreationResult.created(transactionRepository.save(transaction));
+        InternalTransaction savedTransaction = transactionRepository.save(transaction);
+        transactionEventPublisher.publishTransactionBooked(savedTransaction);
+        return TransactionCreationResult.created(savedTransaction);
     }
 
     private void applyBalanceEffect(Account account, TransactionType type, Money amount) {
@@ -155,5 +179,17 @@ public class CreateInternalTransactionUseCase {
 
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static final class NoOpTransactionEventPublisher implements TransactionEventPublisher {
+
+        @Override
+        public void publishTransactionBooked(InternalTransaction transaction) {}
+
+        @Override
+        public void publishSettlementPending(InternalTransaction transaction) {}
+
+        @Override
+        public void publishSettled(InternalTransaction transaction) {}
     }
 }
