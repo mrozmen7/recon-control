@@ -1,0 +1,26 @@
+filebeat.inputs:
+  - type: filestream
+    id: recon-control-logs
+    enabled: true
+    paths:
+      - /var/log/recon-control/*.log
+    parsers:
+      - ndjson:
+          target: ""
+          overwrite_keys: true
+
+processors:
+  - add_fields:
+      target: service
+      fields:
+        name: recon-control
+  - add_tags:
+      tags: ["recon-control", "banking-backend"]
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "filebeat-%{+yyyy.MM.dd}"
+
+setup.template.name: "filebeat"
+setup.template.pattern: "filebeat-*"
+setup.ilm.enabled: false

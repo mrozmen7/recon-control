@@ -22,6 +22,8 @@ The project targets real banking problems such as:
 - Flyway
 - Spring Security + JWT
 - Spring Boot Actuator + Prometheus
+- Grafana
+- Elasticsearch + Kibana + Filebeat
 - Docker / Docker Compose
 - GitHub Actions
 - Testcontainers
@@ -32,6 +34,7 @@ The project targets real banking problems such as:
 - Outbox Pattern
 - Event-driven fraud evaluation
 - Optimistic locking and idempotency
+- Metrics + centralized logging observability stack
 
 ## Current Phase Coverage
 ### Faz 1
@@ -49,6 +52,8 @@ The project targets real banking problems such as:
 - CI pipeline
 - metrics and health endpoints
 - structured logging and correlation id
+- Prometheus + Grafana dashboards
+- Elasticsearch + Kibana + Filebeat log search
 - production-like runtime documentation
 
 ## Local Run
@@ -65,12 +70,19 @@ docker compose up -d --build
 Useful URLs:
 - Swagger: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 - Health: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
-- Prometheus metrics: [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
+- Metrics: [http://localhost:8080/actuator/metrics](http://localhost:8080/actuator/metrics)
+- Prometheus scrape: [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
 - Prometheus UI: [http://localhost:9090](http://localhost:9090)
+- Grafana: [http://localhost:3000](http://localhost:3000)
+  admin / admin123
+- Elasticsearch: [http://localhost:9200](http://localhost:9200)
+- Kibana: [http://localhost:5601](http://localhost:5601)
 
 ## Docs
-- [ADR-004 Production Readiness](docs/adr/ADR-004-production-readiness.md)
-- [Faz 4 Production Readiness Overview](docs/architecture/faz-4-production-readiness.md)
+- [ADR-004 Production Readiness](/Users/yvz.o/Desktop/projects/recon-control/docs/adr/ADR-004-production-readiness.md)
+- [ADR-005 Advanced Observability Stack](/Users/yvz.o/Desktop/projects/recon-control/docs/adr/ADR-005-observability-stack.md)
+- [Faz 4 Production Readiness Overview](/Users/yvz.o/Desktop/projects/recon-control/docs/architecture/faz-4-production-readiness.md)
+- [Faz 4 Advanced Observability Stack](/Users/yvz.o/Desktop/projects/recon-control/docs/architecture/faz-4-observability-stack.md)
 
 ## Why This Matters For Banking Interviews
 This project is intentionally not just CRUD. It demonstrates how a
