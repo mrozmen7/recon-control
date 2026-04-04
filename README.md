@@ -83,6 +83,9 @@ Useful URLs:
 - [ADR-005 Advanced Observability Stack](/Users/yvz.o/Desktop/projects/recon-control/docs/adr/ADR-005-observability-stack.md)
 - [Faz 4 Production Readiness Overview](/Users/yvz.o/Desktop/projects/recon-control/docs/architecture/faz-4-production-readiness.md)
 - [Faz 4 Advanced Observability Stack](/Users/yvz.o/Desktop/projects/recon-control/docs/architecture/faz-4-observability-stack.md)
+- [AI-SAST Playbook](/Users/yvz.o/Desktop/projects/recon-control/docs/security/ai-sast-playbook.md)
+- [Threat Model](/Users/yvz.o/Desktop/projects/recon-control/docs/security/threat-model.md)
+- [Security Triage Policy](/Users/yvz.o/Desktop/projects/recon-control/docs/security/triage-policy.md)
 
 ## Why This Matters For Banking Interviews
 This project is intentionally not just CRUD. It demonstrates how a

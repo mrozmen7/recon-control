@@ -3,6 +3,10 @@
 
 ## Project Overview
 
+Follow the product and system thinking guidance in `docs/standards/product-system-playbook.md`.
+Follow the security review workflow guidance in `docs/security/ai-sast-playbook.md`.
+
+
 Banking-grade reconciliation and settlement control system.
 
 Primary goal:
