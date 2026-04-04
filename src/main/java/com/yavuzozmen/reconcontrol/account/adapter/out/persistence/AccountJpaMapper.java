@@ -9,8 +9,17 @@ final class AccountJpaMapper {
     }
 
     static AccountJpaEntity toJpaEntity(Account account) {
+        return toJpaEntity(account, account.version());
+    }
+
+    static AccountJpaEntity toNewJpaEntity(Account account) {
+        return toJpaEntity(account, null);
+    }
+
+    private static AccountJpaEntity toJpaEntity(Account account, Long version) {
         return new AccountJpaEntity(
             account.id(),
+            version,
             account.accountNumber(),
             account.customerId(),
             account.currency(),
@@ -22,6 +31,7 @@ final class AccountJpaMapper {
     static Account toDomain(AccountJpaEntity entity) {
         return Account.rehydrate(
             entity.getId(),
+            entity.getVersion(),
             entity.getAccountNumber(),
             entity.getCustomerId(),
             entity.getCurrency(),

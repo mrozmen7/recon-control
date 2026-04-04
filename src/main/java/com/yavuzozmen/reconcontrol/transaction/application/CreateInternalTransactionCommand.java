@@ -10,6 +10,7 @@ public record CreateInternalTransactionCommand(
     UUID accountId,
     TransactionType type,
     Money amount,
-    LocalDate valueDate
+    LocalDate valueDate,
+    String idempotencyKey
 ) {
 }

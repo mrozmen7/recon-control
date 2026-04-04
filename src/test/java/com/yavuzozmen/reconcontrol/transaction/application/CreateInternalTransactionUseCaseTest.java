@@ -9,8 +9,11 @@ import com.yavuzozmen.reconcontrol.account.domain.Account;
 import com.yavuzozmen.reconcontrol.common.domain.CurrencyCode;
 import com.yavuzozmen.reconcontrol.common.domain.Money;
 import com.yavuzozmen.reconcontrol.transaction.application.port.out.InternalTransactionRepository;
+import com.yavuzozmen.reconcontrol.transaction.application.port.out.TransactionIdempotencyStore;
 import com.yavuzozmen.reconcontrol.transaction.domain.InternalTransaction;
+import com.yavuzozmen.reconcontrol.transaction.domain.TransactionStatus;
 import com.yavuzozmen.reconcontrol.transaction.domain.TransactionType;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,8 +25,8 @@ import org.junit.jupiter.api.Test;
 class CreateInternalTransactionUseCaseTest {
 
     @Test
-    @DisplayName("should create internal transaction for active account")
-    void shouldCreateInternalTransactionForActiveAccount() {
+    @DisplayName("should create booked credit transaction and update balance")
+    void shouldCreateBookedCreditTransactionAndUpdateBalance() {
         InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
         InMemoryTransactionRepository transactionRepository = new InMemoryTransactionRepository();
 
@@ -32,20 +35,54 @@ class CreateInternalTransactionUseCaseTest {
 
         CreateInternalTransactionUseCase useCase = new CreateInternalTransactionUseCase(
             transactionRepository,
-            accountRepository
+            accountRepository,
+            new InMemoryTransactionIdempotencyStore(),
+            Duration.ofHours(24)
         );
 
-        InternalTransaction transaction = useCase.handle(new CreateInternalTransactionCommand(
+        TransactionCreationResult result = useCase.handle(new CreateInternalTransactionCommand(
+            "TX-001",
+            account.id(),
+            TransactionType.CREDIT,
+            Money.of("50.0000", CurrencyCode.CHF),
+            LocalDate.now(),
+            null
+        ));
+
+        assertThat(result.replayed()).isFalse();
+        assertThat(result.transaction().referenceNo()).isEqualTo("TX-001");
+        assertThat(result.transaction().status()).isEqualTo(TransactionStatus.BOOKED);
+        assertThat(accountRepository.findById(account.id()).orElseThrow().balance().amount())
+            .isEqualByComparingTo("50.0000");
+        assertThat(transactionRepository.savedTransaction).isEqualTo(result.transaction());
+    }
+
+    @Test
+    @DisplayName("should reject debit transaction when insufficient funds")
+    void shouldRejectDebitTransactionWhenInsufficientFunds() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryTransactionRepository transactionRepository = new InMemoryTransactionRepository();
+
+        Account account = Account.open("CH-001", "customer-1", CurrencyCode.CHF);
+        accountRepository.save(account);
+
+        CreateInternalTransactionUseCase useCase = new CreateInternalTransactionUseCase(
+            transactionRepository,
+            accountRepository,
+            new InMemoryTransactionIdempotencyStore(),
+            Duration.ofHours(24)
+        );
+
+        assertThatThrownBy(() -> useCase.handle(new CreateInternalTransactionCommand(
             "TX-001",
             account.id(),
             TransactionType.DEBIT,
             Money.of("50.0000", CurrencyCode.CHF),
-            LocalDate.now()
-        ));
-
-        assertThat(transaction.referenceNo()).isEqualTo("TX-001");
-        assertThat(transaction.accountId()).isEqualTo(account.id());
-        assertThat(transactionRepository.savedTransaction).isEqualTo(transaction);
+            LocalDate.now(),
+            null
+        )))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("insufficient funds");
     }
 
     @Test
@@ -60,15 +97,18 @@ class CreateInternalTransactionUseCaseTest {
 
         CreateInternalTransactionUseCase useCase = new CreateInternalTransactionUseCase(
             transactionRepository,
-            accountRepository
+            accountRepository,
+            new InMemoryTransactionIdempotencyStore(),
+            Duration.ofHours(24)
         );
 
         assertThatThrownBy(() -> useCase.handle(new CreateInternalTransactionCommand(
             "TX-001",
             account.id(),
-            TransactionType.DEBIT,
+            TransactionType.CREDIT,
             Money.of("50.0000", CurrencyCode.CHF),
-            LocalDate.now()
+            LocalDate.now(),
+            null
         )))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("account must be active for transaction creation");
@@ -80,15 +120,18 @@ class CreateInternalTransactionUseCaseTest {
         UUID missingAccountId = UUID.randomUUID();
         CreateInternalTransactionUseCase useCase = new CreateInternalTransactionUseCase(
             new InMemoryTransactionRepository(),
-            new InMemoryAccountRepository()
+            new InMemoryAccountRepository(),
+            new InMemoryTransactionIdempotencyStore(),
+            Duration.ofHours(24)
         );
 
         assertThatThrownBy(() -> useCase.handle(new CreateInternalTransactionCommand(
             "TX-001",
             missingAccountId,
-            TransactionType.DEBIT,
+            TransactionType.CREDIT,
             Money.of("50.0000", CurrencyCode.CHF),
-            LocalDate.now()
+            LocalDate.now(),
+            null
         )))
             .isInstanceOf(AccountNotFoundException.class)
             .hasMessageContaining(missingAccountId.toString());
@@ -105,18 +148,61 @@ class CreateInternalTransactionUseCaseTest {
 
         CreateInternalTransactionUseCase useCase = new CreateInternalTransactionUseCase(
             transactionRepository,
-            accountRepository
+            accountRepository,
+            new InMemoryTransactionIdempotencyStore(),
+            Duration.ofHours(24)
         );
 
         assertThatThrownBy(() -> useCase.handle(new CreateInternalTransactionCommand(
             "TX-001",
             account.id(),
-            TransactionType.DEBIT,
+            TransactionType.CREDIT,
             Money.of("50.0000", CurrencyCode.USD),
-            LocalDate.now()
+            LocalDate.now(),
+            null
         )))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("transaction currency must match account currency");
+    }
+
+    @Test
+    @DisplayName("should replay existing transaction when idempotency key is reused")
+    void shouldReplayExistingTransactionWhenIdempotencyKeyIsReused() {
+        InMemoryAccountRepository accountRepository = new InMemoryAccountRepository();
+        InMemoryTransactionRepository transactionRepository = new InMemoryTransactionRepository();
+        InMemoryTransactionIdempotencyStore idempotencyStore = new InMemoryTransactionIdempotencyStore();
+
+        Account account = Account.open("CH-001", "customer-1", CurrencyCode.CHF);
+        accountRepository.save(account);
+
+        CreateInternalTransactionUseCase useCase = new CreateInternalTransactionUseCase(
+            transactionRepository,
+            accountRepository,
+            idempotencyStore,
+            Duration.ofHours(24)
+        );
+
+        TransactionCreationResult first = useCase.handle(new CreateInternalTransactionCommand(
+            "TX-001",
+            account.id(),
+            TransactionType.CREDIT,
+            Money.of("50.0000", CurrencyCode.CHF),
+            LocalDate.now(),
+            "idem-001"
+        ));
+        TransactionCreationResult replay = useCase.handle(new CreateInternalTransactionCommand(
+            "TX-001",
+            account.id(),
+            TransactionType.CREDIT,
+            Money.of("50.0000", CurrencyCode.CHF),
+            LocalDate.now(),
+            "idem-001"
+        ));
+
+        assertThat(first.replayed()).isFalse();
+        assertThat(replay.replayed()).isTrue();
+        assertThat(replay.transaction().id()).isEqualTo(first.transaction().id());
+        assertThat(transactionRepository.saveCount).isEqualTo(1);
     }
 
     private static final class InMemoryAccountRepository implements AccountRepository {
@@ -137,26 +223,62 @@ class CreateInternalTransactionUseCaseTest {
 
     private static final class InMemoryTransactionRepository implements InternalTransactionRepository {
 
+        private final Map<UUID, InternalTransaction> storage = new HashMap<>();
         private InternalTransaction savedTransaction;
+        private int saveCount;
 
         @Override
         public InternalTransaction save(InternalTransaction transaction) {
             this.savedTransaction = transaction;
+            this.saveCount++;
+            storage.put(transaction.id(), transaction);
             return transaction;
         }
 
         @Override
+        public Optional<InternalTransaction> findById(UUID transactionId) {
+            return Optional.ofNullable(storage.get(transactionId));
+        }
+
+        @Override
         public java.util.List<InternalTransaction> findAll() {
-            return savedTransaction == null ? java.util.List.of() : java.util.List.of(savedTransaction);
+            return java.util.List.copyOf(storage.values());
         }
 
         @Override
         public java.util.List<InternalTransaction> findByAccountId(UUID accountId) {
-            if (savedTransaction == null || !savedTransaction.accountId().equals(accountId)) {
-                return java.util.List.of();
-            }
+            return storage.values().stream()
+                .filter(transaction -> transaction.accountId().equals(accountId))
+                .toList();
+        }
+    }
 
-            return java.util.List.of(savedTransaction);
+    private static final class InMemoryTransactionIdempotencyStore implements TransactionIdempotencyStore {
+
+        private final Map<String, IdempotencyRecord> storage = new HashMap<>();
+
+        @Override
+        public Optional<IdempotencyRecord> find(String key) {
+            return Optional.ofNullable(storage.get(key));
+        }
+
+        @Override
+        public boolean markProcessing(String key, Duration ttl) {
+            if (storage.containsKey(key)) {
+                return false;
+            }
+            storage.put(key, new IdempotencyRecord(IdempotencyStatus.PROCESSING, null));
+            return true;
+        }
+
+        @Override
+        public void markCompleted(String key, UUID transactionId, Duration ttl) {
+            storage.put(key, new IdempotencyRecord(IdempotencyStatus.COMPLETED, transactionId));
+        }
+
+        @Override
+        public void clear(String key) {
+            storage.remove(key);
         }
     }
 }

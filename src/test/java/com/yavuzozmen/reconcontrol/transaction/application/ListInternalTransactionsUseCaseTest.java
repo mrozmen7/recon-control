@@ -84,5 +84,12 @@ class ListInternalTransactionsUseCaseTest {
                 .filter(transaction -> transaction.accountId().equals(accountId))
                 .toList();
         }
+
+        @Override
+        public java.util.Optional<InternalTransaction> findById(UUID transactionId) {
+            return transactions.stream()
+                .filter(transaction -> transaction.id().equals(transactionId))
+                .findFirst();
+        }
     }
 }
