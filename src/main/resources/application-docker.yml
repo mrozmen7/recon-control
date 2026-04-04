@@ -7,3 +7,9 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: kafka:9092
+
+app:
+  ops-assistant:
+    elasticsearch-base-url: http://elasticsearch:9200
+    prometheus-base-url: http://prometheus:9090
+    docs-root: /app/docs

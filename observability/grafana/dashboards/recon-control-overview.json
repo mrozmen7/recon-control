@@ -41,8 +41,8 @@
       "fieldConfig": {"defaults": {}, "overrides": []},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "id": 4,
-      "options": {"showLabels": false, "legend": {"displayMode": "list", "placement": "bottom"}},
-      "targets": [{"bucketAggs": [{"field": "level.keyword", "id": "2", "settings": {"min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "10"}, "type": "terms"}], "metrics": [{"id": "1", "type": "count"}], "query": "*", "refId": "A", "timeField": "@timestamp"}],
+      "options": {"showLabels": true, "legend": {"displayMode": "table", "placement": "right"}},
+      "targets": [{"bucketAggs": [{"field": "level", "id": "2", "settings": {"min_doc_count": "1", "order": "desc", "orderBy": "_count", "size": "10"}, "type": "terms"}], "metrics": [{"id": "1", "type": "count"}], "query": "*", "refId": "A", "timeField": "@timestamp"}],
       "title": "Log Levels",
       "type": "piechart"
     }

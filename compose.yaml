@@ -141,7 +141,7 @@ services:
         condition: service_healthy
       kibana:
         condition: service_started
-    command: ["filebeat", "-e", "-strict.perms=false"]
+    command: ["filebeat", "-e", "--strict.perms=false"]
     volumes:
       - ./observability/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - app_logs:/var/log/recon-control:ro

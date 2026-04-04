@@ -86,6 +86,8 @@ public class SecurityConfig {
                     .hasAnyRole("OPS_USER", "OPS_ADMIN", "AUDITOR")
                     .requestMatchers(HttpMethod.GET, "/api/v1/fraud/cases/**")
                     .hasAnyRole("OPS_ADMIN", "AUDITOR")
+                    .requestMatchers("/api/v1/ops/**")
+                    .hasAnyRole("OPS_ADMIN", "AUDITOR")
                     .anyRequest()
                     .authenticated()
             )

@@ -63,6 +63,15 @@ app:
       burst-window-minutes: 10
   observability:
     correlation-header: X-Correlation-Id
+  ops-assistant:
+    mode: heuristic
+    elasticsearch-base-url: http://localhost:9200
+    prometheus-base-url: http://localhost:9090
+    docs-root: docs
+    log-index-pattern: filebeat-*
+    default-lookback-minutes: 15
+    max-log-lines: 20
+    max-knowledge-documents: 3
 
 resilience4j:
   retry:
